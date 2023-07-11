@@ -1,0 +1,8 @@
+os
+requests
+sqlite3
+datetime
+configparser
+re
+huspacy
+jinja2

@@ -1,0 +1,9 @@
+[DEFAULT]
+monitor_url = 
+uuid = 
+database_name = bmm-mnvcontractscraper.db
+
+[Download]
+url = https://mnv.hu/apps/search/contracts
+from_date = 2023-06-30
+size = 30

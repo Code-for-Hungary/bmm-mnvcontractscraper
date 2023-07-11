@@ -102,8 +102,6 @@ for event in events['data']:
         if not re.search(r'(["+\-~*])', keresoszo):
             keresoszo = re.sub(r'([\s])', ' +', keresoszo) + '*'
         
-        print(keresoszo)
-
         result = db.searchRecords(keresoszo)
         for res in result:
             foundIds.append(res[0])
@@ -111,8 +109,6 @@ for event in events['data']:
     if result:
         content = ''
         for res in result:
-            print(res[2])
-            print(type(res[2]))
             content = content + contenttpl.render(contract = res)
             
         backend.notifyEvent(event['id'], content)

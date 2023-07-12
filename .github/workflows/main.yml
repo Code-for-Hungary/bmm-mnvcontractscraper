@@ -2,7 +2,7 @@ name: figyusz_backend CD
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "main" ]
 
   workflow_dispatch:
 

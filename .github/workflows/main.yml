@@ -1,0 +1,21 @@
+name: figyusz_backend CD
+
+on:
+  push:
+    branches: [ "master" ]
+
+  workflow_dispatch:
+
+jobs:
+  normal_deploy:
+    runs-on: ubuntu-latest
+    if: (github.event_name == 'push') || (github.event_name == 'workflow_dispatch')
+    steps:
+      - name: frissit.sh
+        uses: garygrossgarten/github-action-ssh@release
+        with:
+          command: |
+            ./figyuszmnvfrissit.sh
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.SSHUSER }}
+          privateKey: ${{ secrets.SSHKULCS }}

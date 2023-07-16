@@ -45,7 +45,7 @@ def download_data():
                     lemmas = []
                     doc = nlp(entry['subject'])
                     for t in doc:
-                        if t.pos_ in ['NOUN', 'ADJ', 'PROPN', 'ADP', 'ADV', 'VERB']:
+                        if t.pos_ in ['NOUN', 'ADJ', 'PROPN', 'ADP', 'ADV', 'VERB'] and t.lemma_.isalpha():
                             lemmas.append(t.lemma_.lower())
 
                     lemmas = " ".join(lemmas)

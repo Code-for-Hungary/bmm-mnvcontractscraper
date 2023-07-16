@@ -2,3 +2,4 @@ config.ini
 bmm-mnvcontractscraper.db
 /.vscode/
 /__pycache__/
+*.log

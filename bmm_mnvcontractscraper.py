@@ -3,8 +3,10 @@ import datetime
 import configparser
 import huspacy
 import re
+import logging
 from jinja2 import Environment, FileSystemLoader, select_autoescape
-from bmm import Bmm
+from bmmbackend import bmmbackend
+import bmmtools
 from bmm_mnvdb import Bmm_MNVDB
 
 def download_data():
@@ -12,11 +14,11 @@ def download_data():
     url = config['Download']['url']
     
     d = datetime.datetime.strptime(config['Download']['from_date'], '%Y-%m-%d')
-    from_date = int(d.timestamp()) * 1000
+    from_date = bmmtools.mnvtimestamp(d.timestamp())
 
     most = datetime.datetime.now();
 
-    to_date = int(most.timestamp()) * 1000
+    to_date = bmmtools.mnvtimestamp(most.timestamp())
 
     start = 0
     size = int(config['Download']['size'])
@@ -77,8 +79,13 @@ def clearIsNew(ids):
 config = configparser.ConfigParser()
 config.read_file(open('config.ini'))
 
+logging.basicConfig(
+    filename=config['DEFAULT']['logfile_name'], 
+    level=logging.DEBUG, 
+    format='%(asctime)s - %(levelname)s | %(module)s.%(funcName)s line %(lineno)d: %(message)s')
+
 db = Bmm_MNVDB(config['DEFAULT']['database_name'])
-backend = Bmm(config['DEFAULT']['monitor_url'], config['DEFAULT']['uuid'])
+backend = bmmbackend(config['DEFAULT']['monitor_url'], config['DEFAULT']['uuid'])
 
 foundIds = []
 
@@ -95,13 +102,8 @@ events = backend.getEvents()
 for event in events['data']:
     result = None
 
-    keresoszo = event['parameters'].strip()
-    keresoszo = re.sub(r'\s+', ' ', keresoszo)
-    keresoszo = re.sub(r'([()])', '', keresoszo)
+    keresoszo = bmmtools.searchstringtofts(event['parameters'])
     if keresoszo:
-        if not re.search(r'(["+\-~*])', keresoszo):
-            keresoszo = re.sub(r'([\s])', ' +', keresoszo) + '*'
-        
         result = db.searchRecords(keresoszo)
         for res in result:
             foundIds.append(res[0])

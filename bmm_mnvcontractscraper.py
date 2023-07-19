@@ -115,7 +115,7 @@ for event in events['data']:
             
         backend.notifyEvent(event['id'], content)
 
-if not config['DEFAULT']['staging']:
+if config['DEFAULT']['staging'] == '0':
     clearIsNew(foundIds)
 
 db.closeConnection()

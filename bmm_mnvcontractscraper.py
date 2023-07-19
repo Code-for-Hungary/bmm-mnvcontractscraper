@@ -84,6 +84,8 @@ logging.basicConfig(
     level=logging.INFO, 
     format='%(asctime)s - %(levelname)s | %(module)s.%(funcName)s line %(lineno)d: %(message)s')
 
+logging.info('MNVContractScraper started')
+
 db = Bmm_MNVDB(config['DEFAULT']['database_name'])
 backend = bmmbackend(config['DEFAULT']['monitor_url'], config['DEFAULT']['uuid'])
 
@@ -119,5 +121,7 @@ if config['DEFAULT']['staging'] == '0':
     clearIsNew(foundIds)
 
 db.closeConnection()
+
+logging.info('MNVContractScraper ready. Bye.')
 
 print('Ready. Bye.')

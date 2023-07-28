@@ -77,3 +77,13 @@ class Bmm_MNVDB:
         results = c.fetchall()
         c.close()
         return results
+    
+    def getAllNew(self):
+        c = self.connection.cursor()
+
+        c.execute('SELECT * FROM contracts WHERE isnew=1')
+
+        results = c.fetchall()
+        c.close()
+        return results
+

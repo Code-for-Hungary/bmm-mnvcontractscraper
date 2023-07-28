@@ -104,9 +104,14 @@ events = backend.getEvents()
 for event in events['data']:
     result = None
 
-    keresoszo = bmmtools.searchstringtofts(event['parameters'])
-    if keresoszo:
-        result = db.searchRecords(keresoszo)
+    if event['type'] == 1:
+        keresoszo = bmmtools.searchstringtofts(event['parameters'])
+        if keresoszo:
+            result = db.searchRecords(keresoszo)
+            for res in result:
+                foundIds.append(res[0])
+    else:
+        result = db.getAllNew()
         for res in result:
             foundIds.append(res[0])
 

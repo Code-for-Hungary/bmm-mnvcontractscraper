@@ -121,6 +121,7 @@ for event in events['data']:
             content = content + contenttpl.render(contract = res)
             
         backend.notifyEvent(event['id'], content)
+        logging.info(f"Notified: {event['id']} - {event['type']} - {event['parameters']}")
 
 if config['DEFAULT']['staging'] == '0':
     clearIsNew(foundIds)

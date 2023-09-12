@@ -32,7 +32,7 @@ def download_data():
             'size': size
         }
 
-        response = requests.get(url, params=params)
+        response = requests.get(url, params=params, verify=False)
         response = response.json()
         if not 'errors' in response:
             data = response['hits']

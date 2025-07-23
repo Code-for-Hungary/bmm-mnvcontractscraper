@@ -78,6 +78,7 @@ def clearIsNew(ids):
 
 config = configparser.ConfigParser()
 config.read_file(open('config.ini'))
+api_key = config['DEFAULT']['eventgenerator_api_key']
 
 logging.basicConfig(
     filename=config['DEFAULT']['logfile_name'], 
@@ -100,7 +101,7 @@ contenttpl = env.get_template('content.html')
 nlp = huspacy.load()
 download_data()
 
-events = backend.getEvents()
+events = backend.getEvents(api_key)
 for event in events['data']:
     result = None
 
@@ -121,7 +122,7 @@ for event in events['data']:
             content = content + contenttpl.render(contract = res)
 
         if config['DEFAULT']['donotnotify'] == '0':
-            backend.notifyEvent(event['id'], content)
+            backend.notifyEvent(event['id'], content, api_key)
             logging.info(f"Notified: {event['id']} - {event['type']} - {event['parameters']}")
 
 if config['DEFAULT']['staging'] == '0':

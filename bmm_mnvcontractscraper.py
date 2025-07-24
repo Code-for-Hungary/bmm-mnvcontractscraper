@@ -32,30 +32,46 @@ def download_data():
             'size': size
         }
 
-        response = requests.get(url, params=params, verify=False)
-        response = response.json()
+        try:
+            response = requests.get(url, params=params, verify=False)
+            response = response.json()
+        except requests.RequestException as e:
+            logging.error(f"Network error during data download: {e}")
+            break
+        except ValueError as e:
+            logging.error(f"JSON parsing error during data download: {e}")
+            break
+
         if not 'errors' in response:
             data = response['hits']
             for entry in data:
                 number = entry['number']
 
-                if db.getContract(number) is None:
-                    d = datetime.datetime.fromtimestamp(entry['date'] / 1000).strftime('%Y-%m-%d')
+                try:
+                    if db.getContract(number) is None:
+                        d = datetime.datetime.fromtimestamp(entry['date'] / 1000).strftime('%Y-%m-%d')
 
-                    lemmas = []
-                    doc = nlp(entry['subject'])
-                    for t in doc:
-                        if t.pos_ in ['NOUN', 'ADJ', 'PROPN', 'ADP', 'ADV', 'VERB'] and t.lemma_.isalpha():
-                            lemmas.append(t.lemma_.lower())
+                        lemmas = []
+                        doc = nlp(entry['subject'])
+                        for t in doc:
+                            if t.pos_ in ['NOUN', 'ADJ', 'PROPN', 'ADP', 'ADV', 'VERB'] and t.lemma_.isalpha():
+                                lemmas.append(t.lemma_.lower())
 
-                    lemmas = " ".join(lemmas)
+                        lemmas = " ".join(lemmas)
 
-                    db.saveContract(number, d, entry, lemmas)
-                else:
+                        db.saveContract(number, d, entry, lemmas)
+                    else:
+                        continue
+                except Exception as e:
+                    logging.error(f"Database error while processing contract {number}: {e}")
                     continue
 
-            db.commitConnection()
+            try:
+                db.commitConnection()
+            except Exception as e:
+                logging.error(f"Database commit error: {e}")
         else:
+            logging.error(f"API returned errors: {response['errors']}")
             print('Hiba az adatok letöltése közben')
             break
 
@@ -64,16 +80,22 @@ def download_data():
 
         start += size
 
-    config.set('Download', 'from_date', most.strftime('%Y-%m-%d'))
-    with open('config.ini', 'w') as configfile:
-        config.write(configfile)
+    try:
+        config.set('Download', 'from_date', most.strftime('%Y-%m-%d'))
+        with open('config.ini', 'w') as configfile:
+            config.write(configfile)
+    except Exception as e:
+        logging.error(f"Error updating config file: {e}")
 
 def clearIsNew(ids):
     
-    for num in ids:
-        db.clearIsNew(num)
+    try:
+        for num in ids:
+            db.clearIsNew(num)
 
-    db.commitConnection()
+        db.commitConnection()
+    except Exception as e:
+        logging.error(f"Error clearing isNew flags: {e}")
 
 
 config = configparser.ConfigParser()
@@ -101,20 +123,29 @@ contenttpl = env.get_template('content.html')
 nlp = huspacy.load()
 download_data()
 
-events = backend.getEvents(api_key)
+try:
+    events = backend.getEvents(api_key)
+except Exception as e:
+    logging.error(f"Error fetching events from backend: {e}")
+    events = {'data': []}
+
 for event in events['data']:
     result = None
 
-    if event['type'] == 1:
-        keresoszo = bmmtools.searchstringtofts(event['parameters'])
-        if keresoszo:
-            result = db.searchRecords(keresoszo)
+    try:
+        if event['type'] == 1:
+            keresoszo = bmmtools.searchstringtofts(event['parameters'])
+            if keresoszo:
+                result = db.searchRecords(keresoszo)
+                for res in result:
+                    foundIds.append(res[0])
+        else:
+            result = db.getAllNew()
             for res in result:
                 foundIds.append(res[0])
-    else:
-        result = db.getAllNew()
-        for res in result:
-            foundIds.append(res[0])
+    except Exception as e:
+        logging.error(f"Error processing event {event.get('id', 'unknown')}: {e}")
+        continue
 
     if result:
         content = ''
@@ -122,13 +153,19 @@ for event in events['data']:
             content = content + contenttpl.render(contract = res)
 
         if config['DEFAULT']['donotnotify'] == '0':
-            backend.notifyEvent(event['id'], content, api_key)
-            logging.info(f"Notified: {event['id']} - {event['type']} - {event['parameters']}")
+            try:
+                backend.notifyEvent(event['id'], content, api_key)
+                logging.info(f"Notified: {event['id']} - {event['type']} - {event['parameters']}")
+            except Exception as e:
+                logging.error(f"Error notifying event {event['id']}: {e}")
 
 if config['DEFAULT']['staging'] == '0':
     clearIsNew(foundIds)
 
-db.closeConnection()
+try:
+    db.closeConnection()
+except Exception as e:
+    logging.error(f"Error closing database connection: {e}")
 
 logging.info('MNVContractScraper ready. Bye.')
 

@@ -5,6 +5,7 @@ database_name = bmm-mnvcontractscraper.db
 logfile_name = app.log
 staging = 0
 donotnotify = 0
+eventgenerator_api_key = 
 
 [Download]
 url = https://mnv.hu/apps/search/contracts

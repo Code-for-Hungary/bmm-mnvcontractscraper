@@ -25,3 +25,18 @@
     <span class="bmm-event-data">{{ contract["type"] }}</span>
 </div>
 <div class="bmm-event-separator">&nbsp;</div>
+
+<div class="bmm-event-label">
+    <b>Egyezések száma</b>: {{ doc["result_count"] }}
+</div>
+
+<div class="bmm-event-label">
+    <b>Első egyezések</b>:
+    <ul>
+    {% for result in doc["results"] %}
+        <li>"{{ result["before"] }}<b>{{ result["common"] }}</b>{{ result["after"] }}"</li>
+    {% endfor %}
+    </ul>
+</div>
+
+<br>

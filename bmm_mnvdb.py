@@ -83,7 +83,8 @@ class Bmm_MNVDB:
 
         c.execute('SELECT * FROM contracts WHERE isnew=1')
 
-        results = c.fetchall()
+        columns = [description[0] for description in c.description]
+        results = [dict(zip(columns, row)) for row in c.fetchall()]
         c.close()
         return results
 

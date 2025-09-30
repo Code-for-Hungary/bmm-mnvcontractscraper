@@ -98,6 +98,43 @@ def clearIsNew(ids):
         logging.error(f"Error clearing isNew flags: {e}")
 
 
+def search(entry, keyword, do_lemmatize=False):
+    text = entry["subject"] if not do_lemmatize else entry["lemmasubject"]
+    keyword = keyword.replace('*', '').replace('"', '')
+    results = []
+    matches = [m.start() for m in re.finditer(re.escape(keyword), text, re.IGNORECASE)]
+
+    surrounding_context = 64
+
+    for match_index in matches:
+        before_context = text[max(0, match_index-surrounding_context):match_index]
+        after_context = text[match_index+len(keyword):match_index+len(keyword)+surrounding_context]
+        common_part = text[match_index:match_index+len(keyword)]
+
+        lemma_warn = ''
+        if do_lemmatize:
+            lemma_warn = "szótövezett találat: "
+
+        results.append(
+            {
+                "before": lemma_warn+before_context,
+                "after": after_context,
+                "common": common_part,
+            }
+        )
+    return results
+
+def find_matching_multiple(keywords, entry, config):
+    all_results = []
+    print("Searching for keywords:", keywords)
+    for keyword in keywords:
+        keyword_results = search(entry, keyword)
+        if not keyword_results and config['DEFAULT'].get('donotlemmatize', '0') == '0':
+            keyword_results = search(entry, keyword, do_lemmatize=True)
+        all_results += keyword_results
+    return all_results
+
+
 config = configparser.ConfigParser()
 config.read_file(open('config.ini'))
 api_key = config['DEFAULT']['eventgenerator_api_key']
@@ -119,6 +156,7 @@ env = Environment(
     autoescape=select_autoescape()
 )
 contenttpl = env.get_template('content.html')
+contenttpl_keyword = env.get_template('content_keyword.html')
 
 nlp = huspacy.load()
 download_data()
@@ -129,35 +167,38 @@ except Exception as e:
     logging.error(f"Error fetching events from backend: {e}")
     events = {'data': []}
 
+new_entries = db.getAllNew()
+print(new_entries)
+
 for event in events['data']:
     result = None
+    content = ''
 
     try:
-        if event['type'] == 1:
-            keresoszo = bmmtools.searchstringtofts(event['parameters'])
-            if keresoszo:
-                result = db.searchRecords(keresoszo)
-                for res in result:
-                    foundIds.append(res[0])
+        if event['type'] == 1:  # Event is of specific keyword
+            for entry in new_entries:
+                search_results = find_matching_multiple(event['parameters'].split(","), entry, config)
+                result_entry = entry.copy()
+                result_entry["result_count"] = len(search_results)
+                result_entry["results"] = search_results[:5]
+                if result_entry["results"]:
+                    content += contenttpl_keyword.render(contract = result_entry)
+                foundIds.append(entry["number"])
+
         else:
-            result = db.getAllNew()
-            for res in result:
-                foundIds.append(res[0])
-    except Exception as e:
-        logging.error(f"Error processing event {event.get('id', 'unknown')}: {e}")
-        continue
+            for entry in new_entries:
+                content = content + contenttpl.render(contract = entry)
+                foundIds.append(entry["number"])
 
-    if result:
-        content = ''
-        for res in result:
-            content = content + contenttpl.render(contract = res)
-
-        if config['DEFAULT']['donotnotify'] == '0':
+        if config['DEFAULT']['donotnotify'] == '0' and content:
             try:
                 backend.notifyEvent(event['id'], content, api_key)
                 logging.info(f"Notified: {event['id']} - {event['type']} - {event['parameters']}")
             except Exception as e:
                 logging.error(f"Error notifying event {event['id']}: {e}")
+
+    except Exception as e:
+        logging.error(f"Error processing event {event.get('id', 'unknown')}: {e}")
 
 if config['DEFAULT']['staging'] == '0':
     clearIsNew(foundIds)

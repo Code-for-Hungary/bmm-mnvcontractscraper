@@ -8,6 +8,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from bmmbackend import bmmbackend
 import bmmtools
 from bmm_mnvdb import Bmm_MNVDB
+from difflib import SequenceMatcher
 
 def download_data():
 
@@ -98,27 +99,48 @@ def clearIsNew(ids):
         logging.error(f"Error clearing isNew flags: {e}")
 
 
-def search(entry, keyword, do_lemmatize=False):
-    text = entry["subject"] if not do_lemmatize else entry["lemmasubject"]
+def search(text, keyword, nlp_warn=False):
     keyword = keyword.replace('*', '').replace('"', '')
     results = []
     matches = [m.start() for m in re.finditer(re.escape(keyword), text, re.IGNORECASE)]
-
-    surrounding_context = 64
+    words = text.split()
 
     for match_index in matches:
-        before_context = text[max(0, match_index-surrounding_context):match_index]
-        after_context = text[match_index+len(keyword):match_index+len(keyword)+surrounding_context]
-        common_part = text[match_index:match_index+len(keyword)]
+        # Convert character index to word index
+        char_count = 0
+        word_index = 0
 
-        lemma_warn = ''
-        if do_lemmatize:
-            lemma_warn = "szótövezett találat: "
+        for word_index, word in enumerate(words):
+            char_count += len(word) + 1  # +1 accounts for spaces
+            if char_count > match_index:
+                break
+
+        # Get surrounding 10 words before and after the match
+        before = " ".join(words[max(word_index - 16, 0) : word_index])
+        after = " ".join(words[word_index + 1 : word_index + 17])
+        found_word = words[word_index]
+        match = SequenceMatcher(
+            None, found_word, event["parameters"]
+        ).find_longest_match()
+        match_before = found_word[: match.a]
+        if match_before != "":
+            before = before + " " + match_before
+        else:
+            before = before + " "
+        match_after = found_word[match.a + match.size :]
+        if match_after != "":
+            after = match_after + " " + after
+        else:
+            after = " " + after
+        common_part = found_word[match.a : match.a + match.size]
+
+        if nlp_warn:
+            before = "szótövezett találat: " + before
 
         results.append(
             {
-                "before": lemma_warn+before_context,
-                "after": after_context,
+                "before": before,
+                "after": after,
                 "common": common_part,
             }
         )
@@ -128,9 +150,10 @@ def find_matching_multiple(keywords, entry, config):
     all_results = []
     print("Searching for keywords:", keywords)
     for keyword in keywords:
-        keyword_results = search(entry, keyword)
-        if not keyword_results and config['DEFAULT'].get('donotlemmatize', '0') == '0':
-            keyword_results = search(entry, keyword, do_lemmatize=True)
+        keyword_results = search(entry["subject"], keyword)
+        do_lemmatize = config['DEFAULT'].get('donotlemmatize', '0') == '0'
+        if not keyword_results and do_lemmatize:
+            keyword_results = search(entry["lemmasubject"], keyword, nlp_warn=True)
         all_results += keyword_results
     return all_results
 

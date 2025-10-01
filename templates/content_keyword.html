@@ -27,13 +27,13 @@
 <div class="bmm-event-separator">&nbsp;</div>
 
 <div class="bmm-event-label">
-    <b>Egyezések száma</b>: {{ doc["result_count"] }}
+    <b>Egyezések száma</b>: {{ contract["result_count"] }}
 </div>
 
 <div class="bmm-event-label">
     <b>Első egyezések</b>:
     <ul>
-    {% for result in doc["results"] %}
+    {% for result in contract["results"] %}
         <li>"{{ result["before"] }}<b>{{ result["common"] }}</b>{{ result["after"] }}"</li>
     {% endfor %}
     </ul>

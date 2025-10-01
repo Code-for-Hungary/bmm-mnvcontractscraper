@@ -103,24 +103,27 @@ def search(text, keyword, nlp_warn=False):
     keyword = keyword.replace('*', '').replace('"', '')
     results = []
     matches = [m.start() for m in re.finditer(re.escape(keyword), text, re.IGNORECASE)]
-    words = text.split()
+    
+    # Build a list of (word, start_position, end_position) tuples
+    word_positions = []
+    for match in re.finditer(r'\S+', text):
+        word_positions.append((match.group(), match.start(), match.end()))
 
     for match_index in matches:
-        # Convert character index to word index
-        char_count = 0
+        # Find which word contains this character position
         word_index = 0
-
-        for word_index, word in enumerate(words):
-            char_count += len(word) + 1  # +1 accounts for spaces
-            if char_count > match_index:
+        for i, (word, start_pos, end_pos) in enumerate(word_positions):
+            if start_pos <= match_index < end_pos:
+                word_index = i
                 break
 
         # Get surrounding 10 words before and after the match
+        words = [w[0] for w in word_positions]  # Extract just the words
         before = " ".join(words[max(word_index - 16, 0) : word_index])
         after = " ".join(words[word_index + 1 : word_index + 17])
         found_word = words[word_index]
         match = SequenceMatcher(
-            None, found_word, event["parameters"]
+            None, found_word, keyword
         ).find_longest_match()
         match_before = found_word[: match.a]
         if match_before != "":
